@@ -1004,10 +1004,10 @@ static void Bayer2RGB_( const Mat& srcmat, Mat& dstmat, int code )
 static void Bayer2RGB_VNG_8u( const Mat& srcmat, Mat& dstmat, int code )
 {
     const uchar* bayer = srcmat.ptr();
-    int bstep = (int)srcmat.step;
+    int bstep = (int)srcmat.step;  //columns len
     uchar* dst = dstmat.ptr();
     int dststep = (int)dstmat.step;
-    Size size = srcmat.size();
+    Size size = srcmat.size(); //[width x height]
 
     int blueIdx = code == COLOR_BayerBG2BGR_VNG || code == COLOR_BayerGB2BGR_VNG ? 0 : 2;
     bool greenCell0 = code != COLOR_BayerBG2BGR_VNG && code != COLOR_BayerRG2BGR_VNG;
@@ -1025,12 +1025,11 @@ static void Bayer2RGB_VNG_8u( const Mat& srcmat, Mat& dstmat, int code )
     cv::AutoBuffer<ushort> _buf(bufstep*brows);
     ushort* buf = _buf.data();
 
-    bayer += bstep*2;
 
-    for( int y = 2; y < size.height - 4; y++ )
+    for( int y = 2; y < size.height - 2; y++ ) //top 2 row, buttom 2 row 
     {
-        uchar* dstrow = dst + dststep*y + 6;
-        const uchar* srow;
+        uchar* dstrow = dst + dststep*y + 6;  //offset 2 * 3 channel
+        const uchar* srow; //source row
 
         for( int dy = (y == 2 ? -1 : 1); dy <= 1; dy++ )
         {
@@ -1109,7 +1108,7 @@ static void Bayer2RGB_VNG_8u( const Mat& srcmat, Mat& dstmat, int code )
 #if CV_SIMD128
         int limit = greenCell ? std::min(3, N-2) : 2;
 #else
-        int limit = N - 2;
+        int limit = N - 2; //N is width
 #endif
 
         do
@@ -1505,11 +1504,10 @@ static void Bayer2RGB_VNG_8u( const Mat& srcmat, Mat& dstmat, int code )
             }
 #endif
 
-            limit = N - 2;
         }
         while( i < N - 2 );
 
-        for( i = 0; i < 6; i++ )
+        for( i = 0; i < 6; i++ ) //2 col * 3 channel, copy to the horizontal borader
         {
             dst[dststep*y + 5 - i] = dst[dststep*y + 8 - i];
             dst[dststep*y + (N - 2)*3 + i] = dst[dststep*y + (N - 3)*3 + i];
@@ -1518,14 +1516,12 @@ static void Bayer2RGB_VNG_8u( const Mat& srcmat, Mat& dstmat, int code )
         greenCell0 = !greenCell0;
         blueIdx ^= 2;
     }
-
-    for( i = 0; i < size.width*3; i++ )
+    //copy to the vertical borader
+    for( i = 0; i < size.width*3; i++ ) //*3 due to 3 channel
     {
         dst[i] = dst[i + dststep] = dst[i + dststep*2];
-        dst[i + dststep*(size.height-4)] =
-        dst[i + dststep*(size.height-3)] =
         dst[i + dststep*(size.height-2)] =
-        dst[i + dststep*(size.height-1)] = dst[i + dststep*(size.height-5)];
+        dst[i + dststep*(size.height-1)] = dst[i + dststep*(size.height-3)];
     }
 }
 
